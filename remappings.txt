@@ -1,1 +1,8 @@
+forge-std/=lib/forge-std/src/
+@openzeppelin/=lib/openzeppelin-contracts/contracts/
+@contracts/=src/
+@config/=src/config/
+@constants/=src/constants/
+@scripts/=script/
+@utils/=src/utils/
 @axiom-crypto/axiom-std/=lib/axiom-std/src

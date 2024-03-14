@@ -4,7 +4,7 @@ set export
 # contract deployments
 deploy_earthmind_nft JSON_RPC_URL SENDER:
     echo "Deploying EarthMind NFT"
-    forge script script/v1/001_EarthMind_Deploy.s.sol:EarthMindDeployScript --rpc-url $JSON_RPC_URL --sender $SENDER --broadcast --verify --ffi -vvvv
+    forge script script/001_EarthMind_Deploy.s.sol:EarthMindDeployScript --rpc-url $JSON_RPC_URL --sender $SENDER --broadcast --verify --ffi -vvvv
 
 deploy_local:
     echo "Deploying contracts locally"
@@ -21,7 +21,7 @@ deploy_mainnet:
 # contract interactions
 request_and_approve: # used to request and approve NFT in Sepolia testnet
     echo "Requesting and approving NFT"
-    NETWORK_ID=$CHAIN_ID_SEPOLIA MNEMONIC=$MNEMONIC_SEPOLIA forge script script/v1/Request_And_Approve.s.sol:RequestAndApproveScript --rpc-url $RPC_URL_SEPOLIA --sender $SENDER_SEPOLIA --broadcast --ffi -vvvv
+    NETWORK_ID=$CHAIN_ID_SEPOLIA MNEMONIC=$MNEMONIC_SEPOLIA forge script script/Request_And_Approve.s.sol:RequestAndApproveScript --rpc-url $RPC_URL_SEPOLIA --sender $SENDER_SEPOLIA --broadcast --ffi -vvvv
 
 # orchestration and testing
 test_unit:
@@ -30,7 +30,7 @@ test_unit:
 
 test_coverage:
     forge coverage --report lcov 
-    lcov --remove ./lcov.info --output-file ./lcov.info 'script' 'DeployerUtils.sol' 'DeploymentUtils.sol' 'v2' 'v3'
+    lcov --remove ./lcov.info --output-file ./lcov.info 'script' 'DeployerUtils.sol' 'DeploymentUtils.sol'
     genhtml lcov.info -o coverage --branch-coverage --ignore-errors category
 
 test CONTRACT:
