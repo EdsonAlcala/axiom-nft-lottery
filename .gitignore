@@ -20,3 +20,6 @@ TODO.md
 # Coverage
 coverage/
 lcov.info
+
+# Node.js
+node_modules/

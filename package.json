@@ -1,0 +1,21 @@
+{
+    "name": "nft-lottery",
+    "version": "0.2.6",
+    "description": "Autonomous NFT Lottery with Axiom",
+    "main": "index.js",
+    "scripts": {
+        "start": "tsx app/index.ts"
+    },
+    "keywords": [],
+    "author": "Machina Labs",
+    "license": "MIT",
+    "dependencies": {
+        "@axiom-crypto/client": "2.0.6",
+        "dotenv": "^16.3.1",
+        "ethers": "^6.10.0"
+    },
+    "devDependencies": {
+        "tsx": "^4.7.0",
+        "typescript": "^5.3.3"
+    }
+}
