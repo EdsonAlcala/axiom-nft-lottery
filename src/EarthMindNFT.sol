@@ -4,75 +4,114 @@ pragma solidity 0.8.19;
 import {ERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {Counters} from "@openzeppelin/utils/Counters.sol";
+import {AxiomV2Client} from "@axiom-crypto/v2-periphery/client/AxiomV2Client.sol";
 
 import "./Errors.sol";
 
-contract EarthMindNFT is ERC1155, Ownable {
+contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIds;
+    Counters.Counter private _ticketIds;
 
-    struct ItemRequest {
-        address requester;
-        string prompt;
-        string metadataURI;
-        uint256 creationFeePaid;
-        bool approved;
-    }
+    // axiom specific
+    bytes32 immutable QUERY_SCHEMA;
+    uint64 immutable SOURCE_CHAIN_ID;
 
-    uint256 public constant MAX_ITEMS_PER_COLLECTION = 5000;
+    uint256 public constant MAX_NUMBER_OF_ITEMS = 420;
+    uint256 public constant MAX_NUMBER_OF_TICKETS = 100;
+    uint256 public TICKET_PRICE = 0.1 ether;
 
-    uint256 public ADD_ITEM_TO_COLLECTION_FEE = 0.01 ether;
+    uint8 public constant TICKET_NFT_ID = 1;
+    uint8 public constant TICKET_AMOUNT_PER_BUY = 1;
 
-    // Item structs
-    mapping(bytes32 itemRequestId => ItemRequest itemRequestInfo) public itemRequests;
+    bool public isBuyingTicketsActive;
+    bool public inRaffleInProgress;
+
     mapping(uint256 itemId => string metadataUri) private itemURIs;
 
-    event ItemRequestCreated(bytes32 indexed requestId, address indexed requester, string prompt, uint256 fee);
-    event ItemAdded(uint256 indexed itemId, uint256 feePaid);
+    mapping(uint256 ticketId => address ticketHolder) private ticketHolders;
 
-    constructor() ERC1155("") {}
+    struct WinnerTicket {
+        address winner;
+        bool claimed;
+    }
 
-    function requestAddItemToCollection(string memory _metadataURI, string memory _prompt) external payable {
-        if (msg.value < ADD_ITEM_TO_COLLECTION_FEE) {
+    mapping(uint256 itemId => WinnerTicket winnerInfo) private winners;
+
+    event ItemAdded(uint256 indexed itemId, string metadataURI);
+    event TicketBought(address indexed buyer, uint256 indexed ticketId);
+    event PrizeClaimed(address indexed winner, uint256 indexed itemId);
+
+    constructor(address _axiomV2QueryAddress, uint64 _callbackSourceChainId, bytes32 _querySchema)
+        ERC1155("")
+        AxiomV2Client(_axiomV2QueryAddress)
+    {
+        isBuyingTicketsActive = true;
+        QUERY_SCHEMA = _querySchema;
+        SOURCE_CHAIN_ID = _callbackSourceChainId;
+    }
+
+    // Buy Tickets functions
+    function buyTicket() external payable {
+        if (!isBuyingTicketsActive) {
+            revert NotAvailableTickets();
+        }
+
+        if (_ticketIds.current() >= MAX_NUMBER_OF_TICKETS) {
+            revert MaxTicketsReached();
+        }
+
+        if (msg.value < TICKET_PRICE) {
             revert InsufficientFee();
         }
 
-        if (_tokenIds.current() >= MAX_ITEMS_PER_COLLECTION) {
-            revert MaxItemsReachedForCollection();
+        _ticketIds.increment();
+
+        ticketHolders[_ticketIds.current()] = msg.sender; // store who owns ticket with id _ticketIds.current()
+        // To think about this because I can buy tickets and then resell them, I think it has to be the owner of Token with Id X
+
+        _mint(msg.sender, TICKET_NFT_ID, TICKET_AMOUNT_PER_BUY, ""); // mint ticket to user
+
+        if (_ticketIds.current() == MAX_NUMBER_OF_TICKETS) {
+            isBuyingTicketsActive = false;
         }
 
-        bytes32 requestId = keccak256(abi.encodePacked(_metadataURI, msg.sender));
-
-        if (itemRequests[requestId].requester != address(0)) {
-            revert ItemRequestAlreadyExists();
-        }
-
-        itemRequests[requestId] = ItemRequest({
-            requester: msg.sender,
-            prompt: _prompt,
-            metadataURI: _metadataURI,
-            creationFeePaid: msg.value,
-            approved: false
-        });
-
-        emit ItemRequestCreated(requestId, msg.sender, _prompt, msg.value);
+        emit TicketBought(msg.sender, _ticketIds.current());
     }
 
-    // TODO: Modify onlyOwner to accept an aggregated BLS signature
-    function approveItemAddition(bytes32 _requestId) external onlyOwner {
-        ItemRequest memory itemRequestInstance = itemRequests[_requestId];
-
-        if (itemRequestInstance.requester == address(0)) {
-            revert ItemRequestNotFound();
+    function claimPrize(uint256 _itemId) external {
+        if (winners[_itemId].claimed) {
+            revert PrizeAlreadyClaimed();
         }
 
-        if (itemRequestInstance.approved) {
-            revert ItemRequestAlreadyApproved();
+        if (winners[_itemId].winner != msg.sender) {
+            revert InvalidWinner();
         }
 
-        if (_tokenIds.current() >= MAX_ITEMS_PER_COLLECTION) {
+        if (winners[_itemId].winner == address(0)) {
+            revert WinnerHasntBeenSelected();
+        }
+
+        winners[_itemId].claimed = true;
+
+        _safeTransferFrom(address(this), msg.sender, _itemId, 1, "");
+
+        emit PrizeClaimed(msg.sender, _itemId);
+    }
+
+    // Mint NFT functions
+    function mintNFT(string memory _metadataURI) external onlyOwner {
+        if (_ticketIds.current() != MAX_NUMBER_OF_TICKETS) {
+            revert TicketsHasntBeenSold();
+        }
+
+        if (_tokenIds.current() >= MAX_NUMBER_OF_ITEMS) {
             revert MaxItemsReachedForCollection();
+        }
+
+        if (inRaffleInProgress) {
+            revert RaffleInProgress();
         }
 
         // increase the item count for the collection
@@ -80,20 +119,60 @@ contract EarthMindNFT is ERC1155, Ownable {
 
         uint256 itemId = _tokenIds.current();
 
-        itemRequests[_requestId].approved = true;
-        itemURIs[itemId] = itemRequests[_requestId].metadataURI;
+        itemURIs[itemId] = _metadataURI;
 
-        _mint(itemRequestInstance.requester, itemId, 1, "");
+        _mint(address(this), itemId, 1, "");
 
-        emit ItemAdded(itemId, itemRequestInstance.creationFeePaid);
+        inRaffleInProgress = true;
+
+        // initiate the raffle
+
+        emit ItemAdded(itemId, _metadataURI);
     }
 
+    // Axiom functions
+    function _validateAxiomV2Call(
+        AxiomCallbackType, // callbackType,
+        uint64 sourceChainId,
+        address, // caller,
+        bytes32 querySchema,
+        uint256, // queryId,
+        bytes calldata // extraData
+    ) internal view override {
+        require(sourceChainId == SOURCE_CHAIN_ID, "Source chain ID does not match");
+        require(querySchema == QUERY_SCHEMA, "Invalid query schema");
+    }
+
+    function _axiomV2Callback(
+        uint64, // sourceChainId,
+        address, // caller,
+        bytes32, // querySchema,
+        uint256, // queryId,
+        bytes32[] calldata axiomResults,
+        bytes calldata // extraData
+    ) internal override {
+        // TODO: <Implement your application logic with axiomResults>
+        // EXAMPLE
+        // The callback from the Axiom ZK circuit proof comes out here and we can handle the results from the
+        // `axiomResults` array. Values should be converted into their original types to be used properly.
+        // uint256 blockNumber = uint256(axiomResults[0]);
+        // address addr = address(uint160(uint256(axiomResults[1])));
+        // uint256 averageBalance = uint256(axiomResults[2]);
+
+        // You can do whatever you'd like with the results here. In this example, we just store it the value
+        // directly in the contract.
+        // provenAverageBalances[blockNumber][addr] = averageBalance;
+
+        // emit AverageBalanceStored(blockNumber, addr, averageBalance);
+    }
+
+    // View functions
     function uri(uint256 _tokenId) public view override returns (string memory) {
         return itemURIs[_tokenId];
     }
 
-    function getItemRequest(bytes32 _requestId) external view returns (ItemRequest memory) {
-        return itemRequests[_requestId];
+    function getTotalTicketsBought() external view returns (uint256) {
+        return _ticketIds.current();
     }
 
     function getTotalItemsInCollection() external view returns (uint256) {
@@ -101,8 +180,8 @@ contract EarthMindNFT is ERC1155, Ownable {
     }
 
     // Function to update the fee
-    function setAddItemToCollectionFee(uint256 _newFee) external onlyOwner {
-        ADD_ITEM_TO_COLLECTION_FEE = _newFee;
+    function setTicketPrice(uint256 _newFee) external onlyOwner {
+        TICKET_PRICE = _newFee;
     }
 
     // Withdraw function to transfer contract balance to the owner
@@ -112,3 +191,22 @@ contract EarthMindNFT is ERC1155, Ownable {
         require(sent, "Failed to send Ether");
     }
 }
+
+// inicia el proyecto
+// todos los tickets se ponen a la venta
+// se venden todos los tickets
+// se cierra la venta de tickets
+// se mintea el primero
+// se elige el ganador
+// se mintea el segundo
+// se elige el ganador
+// etc...
+// tal vez permitir vender tickets en secondary market, esto requiere un ERC 20 que represente el ticket
+
+// meter algo de tiempo para que mintee y elija ganador cada periodo de tiempo
+// permitir que el owner pueda cambiar el tiempo de minteo y eleccion de ganador
+
+// meter una flag para saber si ya se claimeo el prize
+// permitir claimear muchos prizes?
+
+//  Modify onlyOwner in mintNFT to accept an aggregated BLS signature

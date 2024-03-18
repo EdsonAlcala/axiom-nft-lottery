@@ -1,26 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-error CollectionInProgress();
+error NotAvailableTickets();
 
-error MaxCollectionsReached();
+error MaxTicketsReached();
 
 error InsufficientFee();
 
-error CollectionRequestAlreadyApproved();
-
-error CollectionRequestNotFound();
-
-error CollectionNotInProgress();
-
 error MaxItemsReachedForCollection();
 
-error InvalidCollection();
+error TicketsHasntBeenSold();
 
-error ItemRequestAlreadyApproved();
+error RaffleInProgress();
 
-error ItemRequestNotFound();
+error PrizeAlreadyClaimed();
 
-error CollectionNotActive();
+error InvalidWinner();
 
-error ItemRequestAlreadyExists();
+error WinnerHasntBeenSelected();
