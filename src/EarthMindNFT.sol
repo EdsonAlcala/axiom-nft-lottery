@@ -6,31 +6,29 @@ import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {Counters} from "@openzeppelin/utils/Counters.sol";
 import {AxiomV2Client} from "@axiom-crypto/v2-periphery/client/AxiomV2Client.sol";
 
+import {IEarthMindTicket} from "@contracts/interfaces/IEarthMindTicket.sol";
+
 import "./Errors.sol";
 
 contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIds;
-    Counters.Counter private _ticketIds;
 
     // axiom specific
     bytes32 immutable QUERY_SCHEMA;
     uint64 immutable SOURCE_CHAIN_ID;
-
-    uint256 public constant MAX_NUMBER_OF_ITEMS = 420;
-    uint256 public constant MAX_NUMBER_OF_TICKETS = 100;
-    uint256 public TICKET_PRICE = 0.1 ether;
-
-    uint8 public constant TICKET_NFT_ID = 1;
+    uint16 public constant MAX_NUMBER_OF_ITEMS = 420;
+    uint8 public constant MAX_NUMBER_OF_TICKETS = 100;
     uint8 public constant TICKET_AMOUNT_PER_BUY = 1;
+
+    uint256 public TICKET_PRICE = 0.1 ether;
+    IEarthMindTicket public immutable nftTicket;
 
     bool public isBuyingTicketsActive;
     bool public inRaffleInProgress;
 
     mapping(uint256 itemId => string metadataUri) private itemURIs;
-
-    mapping(uint256 ticketId => address ticketHolder) private ticketHolders;
 
     struct WinnerTicket {
         address winner;
@@ -43,13 +41,16 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
     event TicketBought(address indexed buyer, uint256 indexed ticketId);
     event PrizeClaimed(address indexed winner, uint256 indexed itemId);
 
-    constructor(address _axiomV2QueryAddress, uint64 _callbackSourceChainId, bytes32 _querySchema)
-        ERC1155("")
-        AxiomV2Client(_axiomV2QueryAddress)
-    {
+    constructor(
+        address _nftTicketAddress,
+        address _axiomV2QueryAddress,
+        uint64 _callbackSourceChainId,
+        bytes32 _querySchema
+    ) ERC1155("") AxiomV2Client(_axiomV2QueryAddress) {
         isBuyingTicketsActive = true;
         QUERY_SCHEMA = _querySchema;
         SOURCE_CHAIN_ID = _callbackSourceChainId;
+        nftTicket = IEarthMindTicket(_nftTicketAddress);
     }
 
     // Buy Tickets functions
@@ -58,7 +59,9 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
             revert NotAvailableTickets();
         }
 
-        if (_ticketIds.current() >= MAX_NUMBER_OF_TICKETS) {
+        uint256 totalTickets = nftTicket.getTotalTickets();
+
+        if (totalTickets >= MAX_NUMBER_OF_TICKETS) {
             revert MaxTicketsReached();
         }
 
@@ -66,18 +69,15 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
             revert InsufficientFee();
         }
 
-        _ticketIds.increment();
+        nftTicket.mintTicket(msg.sender);
 
-        ticketHolders[_ticketIds.current()] = msg.sender; // store who owns ticket with id _ticketIds.current()
-        // To think about this because I can buy tickets and then resell them, I think it has to be the owner of Token with Id X
+        uint256 newTotalTickets = nftTicket.getTotalTickets();
 
-        _mint(msg.sender, TICKET_NFT_ID, TICKET_AMOUNT_PER_BUY, ""); // mint ticket to user
-
-        if (_ticketIds.current() == MAX_NUMBER_OF_TICKETS) {
+        if (newTotalTickets == MAX_NUMBER_OF_TICKETS) {
             isBuyingTicketsActive = false;
         }
 
-        emit TicketBought(msg.sender, _ticketIds.current());
+        emit TicketBought(msg.sender, newTotalTickets);
     }
 
     function claimPrize(uint256 _itemId) external {
@@ -102,7 +102,9 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
 
     // Mint NFT functions
     function mintNFT(string memory _metadataURI) external onlyOwner {
-        if (_ticketIds.current() != MAX_NUMBER_OF_TICKETS) {
+        uint256 totalTickets = nftTicket.getTotalTickets();
+
+        if (totalTickets != MAX_NUMBER_OF_TICKETS) {
             revert TicketsHasntBeenSold();
         }
 
@@ -172,7 +174,7 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
     }
 
     function getTotalTicketsBought() external view returns (uint256) {
-        return _ticketIds.current();
+        return nftTicket.getTotalTickets();
     }
 
     function getTotalItemsInCollection() external view returns (uint256) {

@@ -9,7 +9,6 @@ import {Vm} from "forge-std/Vm.sol";
 
 contract BaseScript is Script {
     using DeployerUtils for Vm;
-    using Configuration for Vm;
 
     Configuration.ConfigValues internal config;
     address internal deployer;
@@ -19,7 +18,7 @@ contract BaseScript is Script {
 
         uint64 networkIdInt = uint64(vm.parseUint(networkId));
 
-        config = vm.getConfiguration(networkIdInt);
+        config = Configuration.load(networkIdInt);
 
         deployer = vm.loadDeployerAddress();
     }

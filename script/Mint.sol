@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.19;
 
-import {EarthMindNFT} from "@contracts/v1/EarthMindNFT.sol";
+import {EarthMindNFT} from "@contracts/EarthMindNFT.sol";
 import {DeploymentUtils} from "@utils/DeploymentUtils.sol";
 import {DeployerUtils} from "@utils/DeployerUtils.sol";
 
@@ -29,13 +29,6 @@ contract RequestAndApproveScript is Script {
 
         string memory metadataURI = "ipfs://QmdiZADNgiJwi6i6qQ3QwWMA6iq77dbHwDof8ukNPaAZDL";
 
-        bytes32 requestId = keccak256(abi.encodePacked(metadataURI, deployer));
-
-        console2.log("Request ID");
-        console2.logBytes32(requestId);
-
-        earthMindNFT.requestAddItemToCollection{value: 0.01 ether}(metadataURI, "sample prompt");
-
-        earthMindNFT.approveItemAddition(requestId);
+        earthMindNFT.mintNFT(metadataURI);
     }
 }
