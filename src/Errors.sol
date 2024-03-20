@@ -13,8 +13,16 @@ error TicketsHasntBeenSold();
 
 error RaffleInProgress();
 
-error PrizeAlreadyClaimed();
+error InvalidBlockNumber();
+
+error InvalidQuerySchema();
+
+error InvalidSourceChainId();
 
 error InvalidWinner();
 
-error WinnerHasntBeenSelected();
+error InvalidTokenId();
+
+error InvalidTotalTickets();
+
+error InvalidTotalNFTs();

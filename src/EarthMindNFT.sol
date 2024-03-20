@@ -16,11 +16,13 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
     Counters.Counter private _tokenIds;
 
     // axiom specific
-    bytes32 immutable QUERY_SCHEMA;
-    uint64 immutable SOURCE_CHAIN_ID;
+    bytes32 public immutable QUERY_SCHEMA;
+    uint64 public immutable SOURCE_CHAIN_ID;
+
     uint16 public constant MAX_NUMBER_OF_ITEMS = 420;
-    uint8 public constant MAX_NUMBER_OF_TICKETS = 100;
+    uint16 public constant MAX_NUMBER_OF_TICKETS = 1000;
     uint8 public constant TICKET_AMOUNT_PER_BUY = 1;
+    uint8 public constant BLOCKS_IN_FUTURE = 10;
 
     uint256 public TICKET_PRICE = 0.1 ether;
     IEarthMindTicket public immutable nftTicket;
@@ -28,18 +30,23 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
     bool public isBuyingTicketsActive;
     bool public inRaffleInProgress;
 
-    mapping(uint256 itemId => string metadataUri) private itemURIs;
+    mapping(uint256 nftItemId => string metadataUri) private itemURIs;
 
     struct WinnerTicket {
+        uint256 ticketId;
         address winner;
-        bool claimed;
+        uint256 blockNumberWhenNFTWasMinted;
+        uint256 blockNumberWhenWinnerSelected;
     }
 
-    mapping(uint256 itemId => WinnerTicket winnerInfo) private winners;
+    mapping(uint256 nftItemId => WinnerTicket winnerInfo) private winners;
+    mapping(uint256 nftItemId => uint256 blockNumber) private blockWhenWinnerWillBeChosen;
 
-    event ItemAdded(uint256 indexed itemId, string metadataURI);
+    event NFTAdded(
+        uint256 indexed nftItemId, string metadataURI, uint256 blockNumber, uint256 blockWhenWinnerWillBeChosen
+    );
     event TicketBought(address indexed buyer, uint256 indexed ticketId);
-    event PrizeClaimed(address indexed winner, uint256 indexed itemId);
+    event WinnerAnnounced(address indexed winner, uint256 indexed itemId);
 
     constructor(
         address _nftTicketAddress,
@@ -80,26 +87,6 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
         emit TicketBought(msg.sender, newTotalTickets);
     }
 
-    function claimPrize(uint256 _itemId) external {
-        if (winners[_itemId].claimed) {
-            revert PrizeAlreadyClaimed();
-        }
-
-        if (winners[_itemId].winner != msg.sender) {
-            revert InvalidWinner();
-        }
-
-        if (winners[_itemId].winner == address(0)) {
-            revert WinnerHasntBeenSelected();
-        }
-
-        winners[_itemId].claimed = true;
-
-        _safeTransferFrom(address(this), msg.sender, _itemId, 1, "");
-
-        emit PrizeClaimed(msg.sender, _itemId);
-    }
-
     // Mint NFT functions
     function mintNFT(string memory _metadataURI) external onlyOwner {
         uint256 totalTickets = nftTicket.getTotalTickets();
@@ -127,9 +114,9 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
 
         inRaffleInProgress = true;
 
-        // initiate the raffle
+        blockWhenWinnerWillBeChosen[itemId] = block.number + BLOCKS_IN_FUTURE;
 
-        emit ItemAdded(itemId, _metadataURI);
+        emit NFTAdded(itemId, _metadataURI, block.number, block.number + BLOCKS_IN_FUTURE);
     }
 
     // Axiom functions
@@ -141,8 +128,13 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
         uint256, // queryId,
         bytes calldata // extraData
     ) internal view override {
-        require(sourceChainId == SOURCE_CHAIN_ID, "Source chain ID does not match");
-        require(querySchema == QUERY_SCHEMA, "Invalid query schema");
+        if (sourceChainId != SOURCE_CHAIN_ID) {
+            revert InvalidSourceChainId();
+        }
+
+        if (querySchema != QUERY_SCHEMA) {
+            revert InvalidQuerySchema();
+        }
     }
 
     function _axiomV2Callback(
@@ -153,19 +145,57 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
         bytes32[] calldata axiomResults,
         bytes calldata // extraData
     ) internal override {
-        // TODO: <Implement your application logic with axiomResults>
-        // EXAMPLE
-        // The callback from the Axiom ZK circuit proof comes out here and we can handle the results from the
-        // `axiomResults` array. Values should be converted into their original types to be used properly.
-        // uint256 blockNumber = uint256(axiomResults[0]);
-        // address addr = address(uint160(uint256(axiomResults[1])));
-        // uint256 averageBalance = uint256(axiomResults[2]);
+        uint256 nftId = uint256(axiomResults[0]);
+        uint256 blockNumberWhenNFTWasMinted = uint256(axiomResults[1]);
+        uint256 blockNumberWhenWinnerSelected = uint256(axiomResults[2]);
+        uint256 nftTicketIdWinner = uint256(axiomResults[3]);
+        uint256 totalTickets = uint256(axiomResults[4]);
+        uint256 totalNFTs = uint256(axiomResults[5]);
 
-        // You can do whatever you'd like with the results here. In this example, we just store it the value
-        // directly in the contract.
-        // provenAverageBalances[blockNumber][addr] = averageBalance;
+        if (nftId > _tokenIds.current()) {
+            revert InvalidTokenId();
+        }
 
-        // emit AverageBalanceStored(blockNumber, addr, averageBalance);
+        if (totalTickets != nftTicket.getTotalTickets()) {
+            revert InvalidTotalTickets();
+        }
+
+        if (totalNFTs != _tokenIds.current()) {
+            revert InvalidTotalNFTs();
+        }
+
+        uint256 blockNumberWhenWinnerWasChosen = blockWhenWinnerWillBeChosen[nftId];
+
+        if (blockNumberWhenNFTWasMinted != blockNumberWhenWinnerWasChosen - BLOCKS_IN_FUTURE) {
+            revert InvalidBlockNumber();
+        }
+
+        if (blockNumberWhenWinnerSelected != blockNumberWhenWinnerWasChosen) {
+            revert InvalidBlockNumber();
+        }
+
+        if (block.number < blockNumberWhenWinnerWasChosen) {
+            revert InvalidBlockNumber();
+        }
+
+        address nftWinnerAddress = nftTicket.ownerOf(nftTicketIdWinner);
+
+        if (nftWinnerAddress == address(0)) {
+            revert InvalidWinner();
+        }
+
+        winners[nftId] = WinnerTicket({
+            ticketId: nftTicketIdWinner,
+            winner: nftWinnerAddress,
+            blockNumberWhenNFTWasMinted: blockNumberWhenNFTWasMinted,
+            blockNumberWhenWinnerSelected: blockNumberWhenWinnerSelected
+        });
+
+        inRaffleInProgress = false;
+
+        _safeTransferFrom(address(this), nftWinnerAddress, nftId, 1, "");
+
+        emit WinnerAnnounced(nftWinnerAddress, nftId);
     }
 
     // View functions
@@ -193,22 +223,3 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
         require(sent, "Failed to send Ether");
     }
 }
-
-// inicia el proyecto
-// todos los tickets se ponen a la venta
-// se venden todos los tickets
-// se cierra la venta de tickets
-// se mintea el primero
-// se elige el ganador
-// se mintea el segundo
-// se elige el ganador
-// etc...
-// tal vez permitir vender tickets en secondary market, esto requiere un ERC 20 que represente el ticket
-
-// meter algo de tiempo para que mintee y elija ganador cada periodo de tiempo
-// permitir que el owner pueda cambiar el tiempo de minteo y eleccion de ganador
-
-// meter una flag para saber si ya se claimeo el prize
-// permitir claimear muchos prizes?
-
-//  Modify onlyOwner in mintNFT to accept an aggregated BLS signature
