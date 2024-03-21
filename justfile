@@ -34,7 +34,16 @@ test_coverage:
     genhtml lcov.info -o coverage --branch-coverage --ignore-errors category
 
 test CONTRACT:
-    forge test --mc {{CONTRACT}} -vvvv
+    forge test --mc {{CONTRACT}} --ffi -vvvv
 
 test_only CONTRACT TEST:
-    forge test --mc {{CONTRACT}} --mt {{TEST}} -vv
+    forge test --mc {{CONTRACT}} --mt {{TEST}} --ffi -vv
+
+# axiom
+compile_circuit:
+    echo "Compiling circuit"
+    npx axiom circuit compile app/axiom/random-winner.circuit.ts
+
+prove_circuit:
+    echo "Proving circuit"
+    npx axiom circuit prove app/axiom/data/compiled.json app/axiom/data/input.json --provider $RPC_URL_SEPOLIA

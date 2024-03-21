@@ -19,8 +19,8 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
     bytes32 public immutable QUERY_SCHEMA;
     uint64 public immutable SOURCE_CHAIN_ID;
 
-    uint16 public constant MAX_NUMBER_OF_ITEMS = 420;
-    uint16 public constant MAX_NUMBER_OF_TICKETS = 1000;
+    uint16 public constant MAX_NUMBER_OF_ITEMS = 10;
+    uint16 public constant MAX_NUMBER_OF_TICKETS = 10;
     uint8 public constant TICKET_AMOUNT_PER_BUY = 1;
     uint8 public constant BLOCKS_IN_FUTURE = 10;
 
@@ -148,9 +148,9 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
         uint256 nftId = uint256(axiomResults[0]);
         uint256 blockNumberWhenNFTWasMinted = uint256(axiomResults[1]);
         uint256 blockNumberWhenWinnerSelected = uint256(axiomResults[2]);
-        uint256 nftTicketIdWinner = uint256(axiomResults[3]);
-        uint256 totalTickets = uint256(axiomResults[4]);
-        uint256 totalNFTs = uint256(axiomResults[5]);
+        uint256 totalTickets = uint256(axiomResults[3]);
+        uint256 totalNFTs = uint256(axiomResults[4]);
+        uint256 nftTicketIdWinner = uint256(axiomResults[5]);
 
         if (nftId > _tokenIds.current()) {
             revert InvalidTokenId();

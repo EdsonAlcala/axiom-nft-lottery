@@ -1,7 +1,7 @@
 {
     "itemId": 1,
-    "blockNumberWhenNFTWasMinted": 5000000,
-    "blockNumberWhenWinnerSelected": 5000010,
-    "totalTickets": 1000,
-    "totalNFTs": 420
+    "blockNumberWhenNFTWasMinted": 5103100,
+    "blockNumberWhenWinnerSelected": 5103110,
+    "totalTickets": 10,
+    "totalNFTs": 10
 }
