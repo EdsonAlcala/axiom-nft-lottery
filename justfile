@@ -2,22 +2,10 @@ set dotenv-load
 set export
 
 # contract deployments
-deploy_earthmind_nft_ticket JSON_RPC_URL SENDER:
-    echo "Deploying EarthMind NFT Ticket"
-    forge script script/000_EarthMind_Deploy_Ticket.s.sol:EarthMindDeployTicketScript --rpc-url $JSON_RPC_URL --sender $SENDER --broadcast --verify --ffi -vvvv
-
-deploy_earthmind_nft JSON_RPC_URL SENDER:
-    echo "Deploying EarthMind NFT"
-    forge script script/001_EarthMind_Deploy.s.sol:EarthMindDeployScript --rpc-url $JSON_RPC_URL --sender $SENDER --broadcast --verify --ffi -vvvv
-
-transfer_ownership_nft_ticket JSON_RPC_URL SENDER:
-    echo "Transferring ownership of EarthMind NFT Ticket"
-    forge script script/002_TransferOwnership.s.sol:TransferOwnershipScript --rpc-url $JSON_RPC_URL --sender $SENDER --broadcast --verify --ffi -vvvv
-
 deploy_all JSON_RPC_URL SENDER:
-    just deploy_earthmind_nft_ticket $JSON_RPC_URL $SENDER
-    just deploy_earthmind_nft $JSON_RPC_URL $SENDER
-    just transfer_ownership_nft_ticket $JSON_RPC_URL $SENDER
+    forge script script/000_EarthMind_Deploy_Ticket.s.sol:EarthMindDeployTicketScript --rpc-url $JSON_RPC_URL --sender $SENDER --broadcast --verify --ffi -vvvv
+    forge script script/001_EarthMind_Deploy.s.sol:EarthMindDeployScript --rpc-url $JSON_RPC_URL --sender $SENDER --broadcast --verify --ffi -vvvv
+    forge script script/002_TransferOwnership.s.sol:TransferOwnershipScript --rpc-url $JSON_RPC_URL --sender $SENDER --broadcast --verify --ffi -vvvv
 
 deploy_local:
     echo "Deploying contracts locally"
