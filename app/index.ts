@@ -1,5 +1,5 @@
 
-import { circuit, CircuitInputs } from "./axiom/random-winner.circuit";
+import { circuit, CircuitInputs } from "./axiom/winner.circuit";
 import dotenv from "dotenv";
 dotenv.config();
 import { Axiom, UserInput } from '@axiom-crypto/client';
@@ -7,8 +7,7 @@ import { Axiom, UserInput } from '@axiom-crypto/client';
 // Inputs to the circuit
 import inputs from './axiom/data/inputs.json';
 
-// Compiled circuit file after running:
-//   `npx axiom circuit compile app/axiom/random-winner.circuit.ts`
+// Compiled circuit file after running: npx axiom circuit compile app/axiom/winner.circuit.ts
 import compiledCircuit from "./axiom/data/compiled.json";
 
 const axiomMain = async (input: UserInput<CircuitInputs>) => {

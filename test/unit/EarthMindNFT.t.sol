@@ -33,7 +33,7 @@ contract EarthMindNFTTest is AxiomTest {
     AxiomInput public input;
 
     bytes32 QUERY_SCHEMA;
-    string QUERY_SCHEMA_PATH = "app/axiom/random-winner.circuit.ts";
+    string QUERY_SCHEMA_PATH = "app/axiom/winner.circuit.ts";
     uint64 BLOCK_NUMBER = 4_205_938;
 
     address nftTicketAddress;
