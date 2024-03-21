@@ -33,7 +33,7 @@ test CONTRACT:
     forge test --mc {{CONTRACT}} --ffi -vvvv
 
 test_only CONTRACT TEST:
-    forge test --mc {{CONTRACT}} --mt {{TEST}} --ffi -vv
+    forge test --mc {{CONTRACT}} --mt {{TEST}} --ffi -vvvv
 
 # axiom
 compile_circuit:
