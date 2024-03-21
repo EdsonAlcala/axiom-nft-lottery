@@ -18,7 +18,7 @@ const axiomMain = async (input: UserInput<CircuitInputs>) => {
         provider: process.env.RPC_URL_SEPOLIA as string,
         privateKey: process.env.PRIVATE_KEY_SEPOLIA as string,
         callback: {
-            target: "0x4A4e2D8f3fBb3525aD61db7Fc843c9bf097c362e",
+            target: "0x3639a81AD449039f00DDBf84487435864Cd37161",
         },
     });
     await axiom.init();

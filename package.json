@@ -1,6 +1,6 @@
 {
     "name": "nft-lottery",
-    "version": "0.2.6",
+    "version": "0.2.7",
     "description": "Autonomous NFT Lottery with Axiom",
     "main": "index.js",
     "scripts": {

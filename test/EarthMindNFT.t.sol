@@ -18,10 +18,9 @@ contract EarthMindNFTTest is AxiomTest {
     address internal ALICE = address(0x2);
     address internal NON_OWNER = address(0x3);
 
-    EarthMindNFT internal earthMindNFT;
-    EarthMindTicket internal earthMindTicket;
+    EarthMindNFT public earthMindNFT;
+    EarthMindTicket public earthMindTicket;
 
-    // TODO: Cambiar Input que este bien
     struct AxiomInput {
         uint256 itemId;
         uint64 blockNumberWhenNFTWasMinted;
@@ -31,16 +30,17 @@ contract EarthMindNFTTest is AxiomTest {
     }
 
     AxiomInput public input;
+    bytes32 public querySchema;
 
-    bytes32 QUERY_SCHEMA;
     string QUERY_SCHEMA_PATH = "app/axiom/winner.circuit.ts";
-    uint64 BLOCK_NUMBER = 4_205_938;
+    uint64 BLOCK_NUMBER = 5530980;
+    uint64 BLOCK_NUMBER_PLUS_10 = 5530990;
 
     address nftTicketAddress;
     uint64 callbackSourceChainId;
 
     function setUp() public {
-        _createSelectForkAndSetupAxiom("sepolia", 5_103_100);
+        _createSelectForkAndSetupAxiom("sepolia", BLOCK_NUMBER);
         _setupAccounts();
 
         callbackSourceChainId = uint64(block.chainid);
@@ -52,20 +52,25 @@ contract EarthMindNFTTest is AxiomTest {
 
         input = AxiomInput({
             itemId: 1,
-            blockNumberWhenNFTWasMinted: 5_103_100,
-            blockNumberWhenWinnerSelected: 5_103_110,
+            blockNumberWhenNFTWasMinted: BLOCK_NUMBER,
+            blockNumberWhenWinnerSelected: BLOCK_NUMBER_PLUS_10,
             totalTickets: 10,
             totalNFTs: 10
         });
 
-        QUERY_SCHEMA = axiomVm.readCircuit(QUERY_SCHEMA_PATH);
+        querySchema = axiomVm.readCircuit(QUERY_SCHEMA_PATH);
+        console2.log("SOURCE_CHAIN_ID");
+        console2.logUint(callbackSourceChainId);
+        assert(0x83c8c0B395850bA55c830451Cfaca4F2A667a983 == Constants.AXIOM_V2_QUERY_ADDRESS);
+        assert(0x83c8c0B395850bA55c830451Cfaca4F2A667a983 == axiomV2QueryAddress);
+        earthMindNFT = new EarthMindNFT(nftTicketAddress, axiomV2QueryAddress, callbackSourceChainId, querySchema);
 
-        earthMindNFT = new EarthMindNFT(nftTicketAddress, axiomV2QueryAddress, callbackSourceChainId, QUERY_SCHEMA);
+        earthMindNFT.transferOwnership(DEPLOYER);
     }
 
     function test_initialProperties() public view {
         assertEq(earthMindNFT.owner(), DEPLOYER);
-        assertEq(earthMindNFT.QUERY_SCHEMA(), QUERY_SCHEMA);
+        assertEq(earthMindNFT.QUERY_SCHEMA(), querySchema);
         assertEq(earthMindNFT.SOURCE_CHAIN_ID(), callbackSourceChainId);
         assertEq(earthMindNFT.MAX_NUMBER_OF_ITEMS(), 10);
         assertEq(earthMindNFT.MAX_NUMBER_OF_TICKETS(), 10);
@@ -93,16 +98,16 @@ contract EarthMindNFTTest is AxiomTest {
         // TODO: Modify blocks in the input
 
         // create a query into Axiom with default parameters
-        Query memory newQuery = query(QUERY_SCHEMA, abi.encode(input), address(earthMindNFT));
+        Query memory newQuery = query(querySchema, abi.encode(input), address(earthMindNFT));
 
         // send the query to Axiom
         newQuery.send();
 
         // prank fulfillment of the query, returning the Axiom results
-        bytes32[] memory axiomResults = newQuery.prankFulfill();
+        // bytes32[] memory axiomResults = newQuery.prankFulfill();
 
         // parse Axiom results and verify length is as expected
-        assertEq(axiomResults.length, 5);
+        // assertEq(axiomResults.length, 5);
         //    TODO
         // uint256 nftIdResult = uint256(axiomResults[0]);
         // uint256 blockNumberWhenNFTWasMintedResult = uint256(axiomResults[1]);

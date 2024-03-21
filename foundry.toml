@@ -6,6 +6,7 @@ solc = "0.8.19"
 optimizer_runs = 1000
 optimiser = true
 fs_permissions = [{ access = "read-write", path = "./" }]
+ffi = true
 ast = true
 
 [rpc_endpoints]
