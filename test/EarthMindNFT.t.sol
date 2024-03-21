@@ -41,14 +41,6 @@ contract EarthMindNFTTest is AxiomTest {
 
     function setUp() public {
         _createSelectForkAndSetupAxiom("sepolia", BLOCK_NUMBER);
-        _setupAccounts();
-
-        callbackSourceChainId = uint64(block.chainid);
-
-        vm.startPrank(DEPLOYER);
-
-        earthMindTicket = new EarthMindTicket(Constants.EARTHMIND_TICKET_URI);
-        nftTicketAddress = address(earthMindTicket);
 
         input = AxiomInput({
             itemId: 1,
@@ -58,6 +50,15 @@ contract EarthMindNFTTest is AxiomTest {
             totalNFTs: 10
         });
 
+        _setupAccounts();
+
+        callbackSourceChainId = uint64(block.chainid);
+
+        vm.startPrank(DEPLOYER);
+
+        earthMindTicket = new EarthMindTicket(Constants.EARTHMIND_TICKET_URI);
+        nftTicketAddress = address(earthMindTicket);
+
         querySchema = axiomVm.readCircuit(QUERY_SCHEMA_PATH);
         console2.log("SOURCE_CHAIN_ID");
         console2.logUint(callbackSourceChainId);
@@ -65,7 +66,7 @@ contract EarthMindNFTTest is AxiomTest {
         assert(0x83c8c0B395850bA55c830451Cfaca4F2A667a983 == axiomV2QueryAddress);
         earthMindNFT = new EarthMindNFT(nftTicketAddress, axiomV2QueryAddress, callbackSourceChainId, querySchema);
 
-        earthMindNFT.transferOwnership(DEPLOYER);
+        earthMindNFT.transferOwnership(address(earthMindTicket));
     }
 
     function test_initialProperties() public view {

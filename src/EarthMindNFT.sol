@@ -54,10 +54,10 @@ contract EarthMindNFT is ERC1155, Ownable, AxiomV2Client {
         uint64 _callbackSourceChainId,
         bytes32 _querySchema
     ) ERC1155("") AxiomV2Client(_axiomV2QueryAddress) {
-        isBuyingTicketsActive = true;
+        nftTicket = IEarthMindTicket(_nftTicketAddress);
         QUERY_SCHEMA = _querySchema;
         SOURCE_CHAIN_ID = _callbackSourceChainId;
-        nftTicket = IEarthMindTicket(_nftTicketAddress);
+        isBuyingTicketsActive = true;
     }
 
     // Buy Tickets functions
