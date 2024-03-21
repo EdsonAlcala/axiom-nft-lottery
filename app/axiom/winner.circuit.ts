@@ -27,15 +27,15 @@ export const defaultInputs = {
 };
 
 export const circuit = async (inputs: CircuitInputs) => {
-    // checkLessThan(inputs.blockNumberWhenNFTWasMinted, inputs.blockNumberWhenWinnerSelected);
+    checkLessThan(inputs.blockNumberWhenNFTWasMinted, inputs.blockNumberWhenWinnerSelected);
 
-    // checkLessThan(inputs.itemId, inputs.totalNFTs)
+    checkLessThan(inputs.itemId, inputs.totalNFTs)
 
     const headerAtBlockWhenWinnerIsSelected = getHeader(inputs.blockNumberWhenWinnerSelected);
 
     const randaoValue = await headerAtBlockWhenWinnerIsSelected.mixHash();
 
-    // checkLessThan(constant(0), inputs.totalTickets)
+    checkLessThan(constant(0), inputs.totalTickets)
 
     // module of the random value with the total tickets + 1 to get the ticket number of the winner in the range [1, totalTicketsValue]
     const ticketIdWinner = add(mod(randaoValue.lo(), inputs.totalTickets), 1);
